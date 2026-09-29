@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LayaLog — Observabilidade & Diagnóstico Inteligente com IA</title>
+  
+  <!-- Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- GSAP for micro-animations -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="/css/v2.css">
+</head>
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar (224px, Quiet UI) -->
+    <aside class="app-sidebar">
+      <div class="sidebar-header">
+        <div class="brand-row">
+          <div class="brand-icon-box">L</div>
+          <span class="brand-name">LayaLog</span>
+        </div>
+
+        <div class="sidebar-context-box">
+          <span class="context-label">Arquivo Atual</span>
+          <span class="context-filename" id="v2ContextFilename">Nenhum log ativo</span>
+        </div>
+
+        <nav class="sidebar-nav">
+          <div class="nav-group-title">Observabilidade</div>
+          <ul class="nav-list">
+            <li>
+              <button class="nav-item-btn active" id="navTriage">
+                <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <span>Triagem de Erros</span>
+                <span class="nav-badge" id="chipCountAll">0</span>
+              </button>
+            </li>
+            <li>
+              <a href="#v2LogViewerSection" class="nav-item-btn" id="navLogs">
+                <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                </svg>
+                <span>Explorador de Log</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border-soft);">
+        <span style="display: flex; align-items: center; gap: 6px;">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--brand-500); display: inline-block;"></span>
+          Laya AI Engine
+        </span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px;">v0.2.0</span>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="app-main">
+      <!-- Topbar (56px) -->
+      <header class="app-topbar">
+        <div class="topbar-breadcrumb">
+          <span class="breadcrumb-root">LayaLog</span>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-root">Triagem</span>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" id="v2BreadcrumbFile">Selecione um arquivo</span>
+        </div>
+
+        <div class="topbar-actions">
+          <!-- Search Input with ⌘K -->
+          <div class="search-input-wrapper">
+            <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input type="text" id="v2SearchInput" class="app-search-input" placeholder="Buscar erros e logs...">
+            <kbd class="search-kbd">⌘K</kbd>
+          </div>
+
+          <!-- Profile Selector -->
+          <div class="profile-select-wrapper" style="display: flex; align-items: center; gap: 6px;">
+            <select id="v2ProfileSelect" class="select-compact" style="max-width: 220px; font-weight: 500;" title="Selecione o perfil de sistema para calibração da IA">
+              <option value="">Carregando perfis...</option>
+            </select>
+            <button class="btn btn-secondary btn-icon" id="v2ManageProfilesBtn" title="Gerenciar Perfis de Gravidade" style="padding: 6px 10px;">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Hidden Upload Input -->
+          <input type="file" id="v2FileInput" accept=".txt,.log,.out" style="display: none;">
+
+          <button class="btn btn-primary" id="v2UploadBtn">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            <span>Importar Log</span>
+          </button>
+
+          <select id="v2HistorySelect" class="select-compact">
+            <option value="">-- Histórico de Análises --</option>
+          </select>
+
+          <button class="btn btn-secondary" id="v2ExportBtn" disabled title="Exportar relatório formatado em Markdown">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span>Exportar MD</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Viewport Content -->
+      <div class="viewport-scroll">
+        <div class="page-container">
+          <!-- KPI Summary Cards (Max 4, Clean) -->
+          <section class="kpi-grid">
+            <div class="kpi-card">
+              <span class="kpi-label">Linhas Processadas</span>
+              <span class="kpi-value" id="v2KpiLines">-</span>
+              <span class="kpi-meta">Volume total do log</span>
+            </div>
+
+            <div class="kpi-card">
+              <span class="kpi-label">Ocorrências de Erro</span>
+              <span class="kpi-value" id="v2KpiErrors" style="color: var(--brand-600);">-</span>
+              <span class="kpi-meta">Eventos classificados</span>
+            </div>
+
+            <div class="kpi-card">
+              <span class="kpi-label">Erros Críticos</span>
+              <span class="kpi-value" id="v2KpiCritical" style="color: var(--critical-solid);">-</span>
+              <span class="kpi-meta">Alta prioridade de resposta</span>
+            </div>
+
+            <div class="kpi-card">
+              <span class="kpi-label">Taxa de Indisponibilidade</span>
+              <span class="kpi-value" id="v2KpiUnavail" style="color: var(--high-solid);">-</span>
+              <span class="kpi-meta">Impacto operacional direto</span>
+            </div>
+          </section>
+
+          <!-- Severity Filters Bar -->
+          <section class="filter-bar">
+            <div class="severity-chips">
+              <button class="severity-chip active all" data-severity="all">
+                <span>Todos</span>
+              </button>
+              <button class="severity-chip critical" data-severity="critical">
+                <span class="chip-dot critical"></span>
+                <span>Crítica</span>
+                <span class="chip-count" id="chipCountCrit">0</span>
+              </button>
+              <button class="severity-chip high" data-severity="high">
+                <span class="chip-dot high"></span>
+                <span>Alta</span>
+                <span class="chip-count" id="chipCountHigh">0</span>
+              </button>
+              <button class="severity-chip medium" data-severity="medium">
+                <span class="chip-dot medium"></span>
+                <span>Média</span>
+                <span class="chip-count" id="chipCountMed">0</span>
+              </button>
+              <button class="severity-chip low" data-severity="low">
+                <span class="chip-dot low"></span>
+                <span>Baixa</span>
+                <span class="chip-count" id="chipCountLow">0</span>
+              </button>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted);">
+              Use os filtros acima para focar no diagnóstico imediato
+            </div>
+          </section>
+
+          <!-- Master-Detail Split Workspace -->
+          <section class="master-detail-container">
+            <!-- Left: Incident List (High Density) -->
+            <div class="v2-panel">
+              <div class="v2-panel-header">
+                <span class="v2-panel-title">
+                  <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                  </svg>
+                  Erros Identificados
+                </span>
+                <span style="font-size: 12px; color: var(--text-muted);">Clique para inspecionar</span>
+              </div>
+              <div class="incidents-scroll" id="v2IncidentsContainer">
+                <div class="empty-state-card">
+                  <svg class="empty-state-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                  </svg>
+                  <div class="empty-state-title">Nenhum arquivo carregado</div>
+                  <div class="empty-state-desc">Importe um arquivo de log ou selecione uma análise prévia no topo da página.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Incident Detail & Laya AI Analysis -->
+            <div class="v2-panel">
+              <div class="v2-panel-header">
+                <span class="v2-panel-title">
+                  <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/>
+                  </svg>
+                  Diagnóstico e Detalhes
+                </span>
+                <span class="brand-tag">Quiet AI</span>
+              </div>
+              <div class="detail-content-scroll" id="v2DetailContainer">
+                <div class="empty-state-card">
+                  <svg class="empty-state-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/>
+                  </svg>
+                  <div class="empty-state-title">Aguardando seleção</div>
+                  <div class="empty-state-desc">Os detalhes e a análise semântica da IA aparecerão aqui ao selecionar um incidente.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Dedicated Dense Log Viewer Section -->
+          <section class="v2-panel" id="v2LogViewerSection" style="height: 480px; min-height: 480px;">
+            <div class="v2-panel-header">
+              <span class="v2-panel-title">
+                <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                </svg>
+                Explorador de Log Completo
+              </span>
+              <span style="font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">
+                Stream Virtualizado · 200 linhas/chunk
+              </span>
+            </div>
+            <div id="v2LogViewerContainer" style="flex: 1; height: 100%;">
+              <!-- Rendered via V2LogViewer -->
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Loading / Progress Modal Overlay (Quiet UI) -->
+  <div class="modal-backdrop" id="v2LoadingModal">
+    <div class="modal-window">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <h4 style="font-size: 15px; font-weight: 600; color: var(--text-primary);">Processamento de Log</h4>
+        <span style="font-size: 12px; font-weight: 600; color: var(--brand-600);" id="v2ProgressPercent">0%</span>
+      </div>
+
+      <div style="font-size: 13px; color: var(--text-secondary);" id="v2ProgressFilename">arquivo.log</div>
+
+      <div class="progress-track-v2">
+        <div class="progress-fill-v2" id="v2ProgressFill"></div>
+      </div>
+
+      <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between;">
+        <span id="v2ProgressStatus">Classificando com Laya System One...</span>
+        <button class="btn btn-ghost btn-sm" id="v2BtnCancelProcess" style="color: var(--critical-text);">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Management Modal (Quiet UI) -->
+  <div class="modal-backdrop" id="v2ProfileModal">
+    <div class="modal-window modal-window-lg">
+      <div class="modal-header-v2">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px;">⚙️</span>
+          <div>
+            <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0;">Perfis de Gravidade & Calibração Laya</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Defina como o motor de IA avalia a gravidade (Baixa, Média, Crítica) para cada stack</span>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-icon" id="v2CloseProfileModalBtn" title="Fechar">✕</button>
+      </div>
+
+      <div class="modal-body-v2">
+        <!-- Profiles List (Left) -->
+        <div class="profile-list-sidebar">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Perfis Disponíveis</span>
+            <button class="btn btn-primary btn-sm" id="v2NewProfileBtn" style="font-size: 11px; padding: 3px 8px;">+ Novo</button>
+          </div>
+          <div id="v2ProfilesContainer" style="display: flex; flex-direction: column; gap: 6px;">
+            <!-- Loaded dynamically via JS -->
+          </div>
+        </div>
+
+        <!-- Profile Form Editor (Right) -->
+        <div class="profile-editor-pane">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-soft); padding-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h4 id="v2ProfileFormTitle" style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0;">Editar Perfil</h4>
+              <span id="v2ProfileBuiltinBadge" class="badge badge-subtle">Nativo</span>
+            </div>
+            <div style="display: flex; gap: 6px;" id="v2ProfileTopActions">
+              <button class="btn btn-secondary btn-sm" id="v2CloneProfileBtn" title="Criar uma cópia editável deste perfil">
+                <span>📑 Duplicar</span>
+              </button>
+              <button class="btn btn-primary btn-sm" id="v2SaveProfileTopBtn" title="Salvar critérios e configurações do perfil">
+                <span>💾 Salvar Perfil</span>
+              </button>
+            </div>
+          </div>
+
+          <form id="v2ProfileForm" style="display: flex; flex-direction: column; gap: 14px;">
+            <input type="hidden" id="v2FormProfileId" value="">
+
+            <div class="form-group-v2">
+              <label class="form-label-v2" for="v2FormProfileName">
+                <span>Nome do Perfil <strong style="color: var(--critical-solid);">*</strong></span>
+              </label>
+              <input type="text" id="v2FormProfileName" class="form-input-v2" placeholder="Ex: Autenticação Keycloak Produção" required>
+            </div>
+
+            <div class="form-group-v2">
+              <label class="form-label-v2" for="v2FormProfileDesc">
+                <span>Descrição Curta</span>
+              </label>
+              <input type="text" id="v2FormProfileDesc" class="form-input-v2" placeholder="Ex: Ajustado para ambiente de SSO corporativo">
+            </div>
+
+            <div class="form-group-v2">
+              <label class="form-label-v2" for="v2FormProfileContext">
+                <span>Contexto Operacional do Sistema (Opcional - Laya State)</span>
+              </label>
+              <input type="text" id="v2FormProfileContext" class="form-input-v2" placeholder="Ex: Servidor IAM com alto tráfego e auditoria constante de login">
+            </div>
+
+            <!-- 3 Criteria Textareas -->
+            <div class="form-group-v2">
+              <label class="form-label-v2" for="v2FormCriteriaBaixa">
+                <span class="criteria-badge-label"><span class="chip-dot low"></span> 🟢 Critério para Gravidade BAIXA (1) <strong style="color: var(--critical-solid);">*</strong></span>
+              </label>
+              <textarea id="v2FormCriteriaBaixa" class="form-textarea-v2" rows="2" placeholder="Ex: tokens expirados em rotina normal de clientes, avisos informativos ou 404 pontuais" required></textarea>
+            </div>
+
+            <div class="form-group-v2">
+              <label class="form-label-v2" for="v2FormCriteriaMedia">
+                <span class="criteria-badge-label"><span class="chip-dot medium"></span> 🟡 Critério para Gravidade MÉDIA (2) <strong style="color: var(--critical-solid);">*</strong></span>
+              </label>
+              <textarea id="v2FormCriteriaMedia" class="form-textarea-v2" rows="2" placeholder="Ex: falhas de login, acionamento do Brute Force Protector, lentidão em LDAP" required></textarea>
+            </div>
+
+            <div class="form-group-v2">
+              <label class="form-label-v2" for="v2FormCriteriaCritica">
+                <span class="criteria-badge-label"><span class="chip-dot critical"></span> 🔴 Critério para Gravidade CRÍTICA (3) <strong style="color: var(--critical-solid);">*</strong></span>
+              </label>
+              <textarea id="v2FormCriteriaCritica" class="form-textarea-v2" rows="2" placeholder="Ex: banco do Keycloak inacessível, falha de chaves JWKS ou realm indisponível" required></textarea>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="modal-footer-v2">
+        <button class="btn btn-ghost btn-sm" id="v2DeleteProfileBtn" style="color: var(--critical-text); display: none;">
+          🗑️ Excluir Perfil
+        </button>
+        <div style="display: flex; gap: 8px; margin-left: auto;">
+          <button class="btn btn-secondary btn-sm" id="v2CancelProfileBtn">Cancelar</button>
+          <button class="btn btn-primary btn-sm" id="v2SaveProfileBtn">Salvar Perfil</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/v2-log-viewer.js"></script>
+  <script src="/js/v2-app.js"></script>
+</body>
+</html>
