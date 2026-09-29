@@ -18,20 +18,32 @@ async def capture():
         await page.goto("http://localhost:8100", wait_until="networkidle")
         await asyncio.sleep(1)
 
-        # 1. Check if history exists and select first item
+        # 1. Check if history exists and select an item with rich incidents
         history_select = page.locator("#v2HistorySelect")
-        options_count = await history_select.locator("option").count()
-        if options_count > 1:
+        options = await history_select.locator("option").all()
+        
+        selected = False
+        for opt in options:
+            text = await opt.inner_text()
+            if "log1" in text:
+                val = await opt.get_attribute("value")
+                if val:
+                    await history_select.select_option(value=val)
+                    selected = True
+                    break
+        
+        if not selected and len(options) > 1:
             await history_select.select_option(index=1)
-            await asyncio.sleep(1.5)
+
+        await page.wait_for_timeout(2000)
 
         # Click first incident if available
         first_incident = page.locator(".incident-row-card").first
         if await first_incident.count() > 0:
             await first_incident.click()
-            await asyncio.sleep(0.5)
+            await page.wait_for_timeout(1000)
 
-        # Screenshot 1: Dashboard Overview
+        # Screenshot 1: Dashboard Overview (Viewport 1440x900)
         dashboard_path = assets_dir / "01-dashboard-triagem.png"
         await page.screenshot(path=str(dashboard_path), full_page=False)
         print(f"Captured: {dashboard_path}")
