@@ -1,10 +1,6 @@
 # ⚡ LayaLog — Observabilidade Semântica & Diagnóstico de Logs com IA
 
 <p align="center">
-  <img src="docs/assets/01-dashboard-triagem.png" alt="LayaLog Dashboard" width="100%" style="border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);" />
-</p>
-
-<p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white" alt="Python 3.9+" /></a>
   <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi&logoColor=white" alt="FastAPI" /></a>
   <a href="https://github.com/typesafe-ai/laya"><img src="https://img.shields.io/badge/Laya%20AI-System%20One-purple?logo=openai&logoColor=white" alt="Laya AI" /></a>
@@ -22,21 +18,14 @@
 
 ## ✨ Screenshots do App
 
-### 1. Triagem de Incidentes & Diagnóstico Laya AI
-Visualização dos KPIs de saúde do log, distribuição de gravidade (*Crítica*, *Média*, *Baixa*) e diagnóstico detalhado emitido pelo motor Laya AI com salto sincronizado para as linhas de evidência.
-
-<p align="center">
-  <img src="docs/assets/01-dashboard-triagem.png" alt="Dashboard de Triagem de Incidentes" width="100%" style="border-radius: 8px; border: 1px solid #E2E8F0;" />
-</p>
-
-### 2. Calibração e Perfis de Gravidade Customizáveis
+### 1. Calibração e Perfis de Gravidade Customizáveis
 Permite criar, editar, clonar e excluir perfis de calibração que injetam critérios semânticos especializados (ex: *Keycloak / IAM*, *Gateway de Pagamentos*, *Microsserviços*, *Bancos de Dados*) no prompt do classificador Laya.
 
 <p align="center">
   <img src="docs/assets/02-perfis-gravidade.png" alt="Modal de Perfis de Gravidade" width="100%" style="border-radius: 8px; border: 1px solid #E2E8F0;" />
 </p>
 
-### 3. Explorador de Log com Virtual Scrolling (60 FPS)
+### 2. Explorador de Log com Virtual Scrolling (60 FPS)
 Motor de renderização virtual particionado em lotes com tipografia monoespelhada (*JetBrains Mono*), numeração precisa, destaque em tempo real de termos de busca e navegação instantânea para qualquer linha do arquivo sem sobrecarregar a memória do navegador.
 
 <p align="center">
