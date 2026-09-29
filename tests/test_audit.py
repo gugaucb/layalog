@@ -109,5 +109,5 @@ def test_classifier_integrates_audit_logger(tmp_path, monkeypatch):
     assert entry["status"] == "success"
     assert entry["payload_sent"]["state"]["system_context"] == "Loja virtual com pagamentos online"
     assert "gravidade" in entry["payload_sent"]["questions"]
-    assert entry["payload_sent"]["questions"]["gravidade"]["criteria"]["Crítica"] == "Falha de gateway"
+    assert entry["payload_sent"]["questions"]["gravidade"]["criteria"]["CRITICAL"] == "Falha de gateway"
     assert entry["prediction_received"]["gravidade"]["choice"] == "Crítica"

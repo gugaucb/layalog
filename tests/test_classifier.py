@@ -33,15 +33,21 @@ def test_build_questions_gravidade_is_choice(mock_classifier):
     assert "gravidade" in questions
     assert questions["gravidade"]["type"] == "choice"
     assert isinstance(questions["gravidade"]["criteria"], dict)
-    assert questions["gravidade"]["criteria"]["Baixa"] == "Avisos leves"
-    assert questions["gravidade"]["criteria"]["Média"] == "Erros intermitentes"
-    assert questions["gravidade"]["criteria"]["Crítica"] == "Queda no checkout"
+    assert questions["gravidade"]["criteria"]["LOW"] == "Avisos leves"
+    assert questions["gravidade"]["criteria"]["MEDIUM"] == "Erros intermitentes"
+    assert questions["gravidade"]["criteria"]["CRITICAL"] == "Queda no checkout"
 
 @pytest.mark.parametrize("pred_gravidade,expected_val,expected_label", [
+    ({"choice": "CRITICAL"}, 3, "Crítica"),
+    ({"choice": "MEDIUM"}, 2, "Média"),
+    ({"choice": "LOW"}, 1, "Baixa"),
     ({"choice": "Crítica"}, 3, "Crítica"),
     ({"choice": "critica"}, 3, "Crítica"),
     ({"value": "Baixa"}, 1, "Baixa"),
     ({"label": "Média"}, 2, "Média"),
+    ("CRITICAL", 3, "Crítica"),
+    ("MEDIUM", 2, "Média"),
+    ("LOW", 1, "Baixa"),
     ("Crítica", 3, "Crítica"),
     ("baixa", 1, "Baixa"),
     ("Média", 2, "Média"),

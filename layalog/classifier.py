@@ -61,11 +61,11 @@ class LayaClassifier:
             },
             "gravidade": {
                 "type": "choice",
-                "instructions": "Considerando o contexto operacional do sistema em `system_context`, qual é o nível de gravidade deste erro?",
+                "instructions": "Classify the operational severity based on technical evidence, affected functionality, user impact and service availability.",
                 "criteria": {
-                    "Baixa": p.criteria_baixa,
-                    "Média": p.criteria_media,
-                    "Crítica": p.criteria_critica
+                    "LOW": p.criteria_baixa,
+                    "MEDIUM": p.criteria_media,
+                    "CRITICAL": p.criteria_critica
                 }
             },
             "causa_indisponibilidade": {
