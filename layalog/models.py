@@ -29,6 +29,7 @@ class ErrorIncident(BaseModel):
     technical_summary: str
     recommendation: Optional[str] = None
     laya_raw_output: Optional[Dict[str, Any]] = None
+    classification_evidence: List[str] = Field(default_factory=list)
 
 class LogStats(BaseModel):
     total_lines: int

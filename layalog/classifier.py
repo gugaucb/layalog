@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 from layalog.models import ErrorIncident, GravityProfile
 from layalog.profiles import get_default_profile
 from layalog.audit import get_audit_logger, LayaAuditLogger
+from layalog.evidence import EvidenceExtractor, FinalClassificationResolver
 
 logger = logging.getLogger("layalog.classifier")
 
@@ -12,6 +13,8 @@ class LayaClassifier:
         self.router = None
         self.initialized = False
         self.audit_logger = audit_logger or get_audit_logger()
+        self.evidence_extractor = EvidenceExtractor()
+        self.classification_resolver = FinalClassificationResolver()
         self._init_router(preload)
 
     def _init_router(self, preload: bool):
@@ -76,6 +79,9 @@ class LayaClassifier:
             raise RuntimeError("Laya Router não está instanciado.")
 
         active_profile = profile or get_default_profile()
+
+        # Extract deterministic technical evidence across message, raw snippet and stacktrace
+        evidence = self.evidence_extractor.extract(raw_incident)
 
         # Build token-safe state strictly respecting the 512-1024 token window
         state = {
@@ -191,6 +197,17 @@ class LayaClassifier:
             elif isinstance(pred_indisp, (int, float)):
                 causa_indisponibilidade = bool(pred_indisp > 0.5)
 
+        # Apply deterministic resolution based on strong technical evidence
+        setor, tipo_falha, gravidade_val, causa_indisponibilidade, classification_evidence = (
+            self.classification_resolver.resolve(
+                predicted_setor=setor,
+                predicted_tipo_falha=tipo_falha,
+                predicted_gravidade=gravidade_val,
+                predicted_causa_indisponibilidade=causa_indisponibilidade,
+                evidence=evidence
+            )
+        )
+
         grav_label_map = {1: "Baixa", 2: "Média", 3: "Crítica"}
         gravidade_label = grav_label_map.get(gravidade_val, "Média")
 
@@ -217,7 +234,8 @@ class LayaClassifier:
             sample_stacktrace=raw_incident.get("sample_stacktrace"),
             technical_summary=technical_summary,
             recommendation=recommendation,
-            laya_raw_output=prediction
+            laya_raw_output=prediction,
+            classification_evidence=classification_evidence
         )
 
     def _generate_summary(self, title: str, setor: str, tipo_falha: str, gravidade: str, indisponibilidade: bool) -> str:
