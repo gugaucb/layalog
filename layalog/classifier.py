@@ -1,14 +1,17 @@
 import logging
+import time
 from typing import Dict, Any, Optional
 from layalog.models import ErrorIncident, GravityProfile
 from layalog.profiles import get_default_profile
+from layalog.audit import get_audit_logger, LayaAuditLogger
 
 logger = logging.getLogger("layalog.classifier")
 
 class LayaClassifier:
-    def __init__(self, preload: bool = True):
+    def __init__(self, preload: bool = True, audit_logger: Optional[LayaAuditLogger] = None):
         self.router = None
         self.initialized = False
+        self.audit_logger = audit_logger or get_audit_logger()
         self._init_router(preload)
 
     def _init_router(self, preload: bool):
@@ -87,11 +90,38 @@ class LayaClassifier:
 
         questions = self.build_questions(active_profile)
 
+        start_t = time.perf_counter()
         try:
             prediction = self.router.predict(state, questions)
         except Exception as e:
+            duration_ms = (time.perf_counter() - start_t) * 1000
+            if self.audit_logger:
+                self.audit_logger.log_interaction(
+                    incident_signature=raw_incident.get("signature", "unknown"),
+                    profile_id=active_profile.id,
+                    profile_name=active_profile.name,
+                    state=state,
+                    questions=questions,
+                    prediction=None,
+                    duration_ms=duration_ms,
+                    status="error",
+                    error_message=str(e)
+                )
             logger.error(f"Erro ao executar router.predict do Laya: {e}")
             raise RuntimeError(f"Erro ao classificar incidente com o Laya: {str(e)}") from e
+
+        duration_ms = (time.perf_counter() - start_t) * 1000
+        if self.audit_logger:
+            self.audit_logger.log_interaction(
+                incident_signature=raw_incident.get("signature", "unknown"),
+                profile_id=active_profile.id,
+                profile_name=active_profile.name,
+                state=state,
+                questions=questions,
+                prediction=prediction,
+                duration_ms=duration_ms,
+                status="success"
+            )
 
         # Extract values from Laya prediction
         setor = "Negócio / Regras da Aplicação"
