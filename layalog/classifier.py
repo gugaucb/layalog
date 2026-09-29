@@ -54,13 +54,13 @@ class LayaClassifier:
                 }
             },
             "gravidade": {
-                "type": "score",
+                "type": "choice",
                 "instructions": "Considerando o contexto operacional do sistema em `system_context`, qual é o nível de gravidade deste erro?",
-                "criteria": [
-                    f"baixa: {p.criteria_baixa}",
-                    f"média: {p.criteria_media}",
-                    f"crítica: {p.criteria_critica}"
-                ]
+                "criteria": {
+                    "Baixa": p.criteria_baixa,
+                    "Média": p.criteria_media,
+                    "Crítica": p.criteria_critica
+                }
             },
             "causa_indisponibilidade": {
                 "type": "noul",
@@ -110,12 +110,43 @@ class LayaClassifier:
             elif isinstance(pred_tipo, str):
                 tipo_falha = pred_tipo
 
+        grav_map = {
+            "baixa": 1,
+            "baixo": 1,
+            "low": 1,
+            "1": 1,
+            "média": 2,
+            "media": 2,
+            "médio": 2,
+            "medio": 2,
+            "medium": 2,
+            "2": 2,
+            "crítica": 3,
+            "critica": 3,
+            "crítico": 3,
+            "critico": 3,
+            "critical": 3,
+            "high": 3,
+            "3": 3,
+        }
+
         gravidade_val = 2
         if "gravidade" in prediction:
             pred_grav = prediction["gravidade"]
             if isinstance(pred_grav, dict):
-                grav_score = pred_grav.get("score") or pred_grav.get("value") or 1.0
-                gravidade_val = max(1, min(3, round(float(grav_score) * 2 + 1)))
+                choice_raw = pred_grav.get("choice") or pred_grav.get("value") or pred_grav.get("label")
+                if choice_raw is not None and str(choice_raw).strip().lower() in grav_map:
+                    gravidade_val = grav_map[str(choice_raw).strip().lower()]
+                elif "score" in pred_grav:
+                    try:
+                        grav_score = float(pred_grav["score"])
+                        gravidade_val = max(1, min(3, round(grav_score * 2 + 1)))
+                    except (ValueError, TypeError):
+                        gravidade_val = 2
+            elif isinstance(pred_grav, str):
+                normalized = pred_grav.strip().lower()
+                if normalized in grav_map:
+                    gravidade_val = grav_map[normalized]
             elif isinstance(pred_grav, (int, float)):
                 gravidade_val = max(1, min(3, int(round(float(pred_grav)))))
 
