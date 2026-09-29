@@ -142,3 +142,70 @@ def test_classifier_e2e_ora_and_http500_single_occurrence(monkeypatch):
     assert len(incident.classification_evidence) >= 2
     assert any("ORA-02393" in ev for ev in incident.classification_evidence)
     assert any("500" in ev for ev in incident.classification_evidence)
+
+
+def test_resolver_brute_force_protector_overrides_to_critical():
+    resolver = FinalClassificationResolver()
+    evidence = {
+        "is_database_error": False,
+        "is_http_failure": False,
+        "is_out_of_memory": False,
+        "is_jwt_expired": False,
+        "is_brute_force": True,
+        "classification_evidence": ["Brute Force Protector triggered detected", "KC-SERVICES0053 detected"]
+    }
+
+    # If Laya returns Medium severity for the security event
+    setor, tipo_falha, gravidade, causa_indisp, ev_list = resolver.resolve(
+        predicted_setor="Autenticação / Segurança",
+        predicted_tipo_falha="Outros",
+        predicted_gravidade=2,
+        predicted_causa_indisponibilidade=False,
+        evidence=evidence
+    )
+
+    assert setor == "Autenticação / Segurança"
+    assert tipo_falha == "Permission / Auth"
+    assert gravidade == 3  # Critical
+    assert "Brute Force Protector triggered detected" in ev_list
+
+
+def test_classifier_e2e_brute_force_protector_lockout(monkeypatch):
+    mock_router_cls = MagicMock()
+    mock_router_instance = MagicMock()
+    mock_router_cls.return_value = mock_router_instance
+
+    # Model returns Medium initially
+    mock_router_instance.predict.return_value = {
+        "setor": {"choice": "Autenticação / Segurança"},
+        "tipo_falha": {"choice": "Outros"},
+        "gravidade": {"choice": "MEDIUM"},
+        "causa_indisponibilidade": {"probability": 0.05}
+    }
+
+    mock_laya_module = MagicMock()
+    mock_laya_module.Router = mock_router_cls
+    monkeypatch.setitem(__import__("sys").modules, "laya", mock_laya_module)
+
+    classifier = LayaClassifier(preload=False, audit_logger=None)
+    classifier.router = mock_router_instance
+
+    raw_incident = {
+        "signature": "sig_brute_force",
+        "message": "[org.keycloak.services] (Brute Force Protector) KC-SERVICES0053: login failure for user 930e369e-4d57-43ea-9f54-7464d050905e from ip 172.16.200.67",
+        "level": "WARN",
+        "occurrences": 77,
+        "first_seen_line": 923,
+        "first_seen_time": "2026-09-28 07:18:59,383",
+        "sample_raw": "2026-09-28 07:18:59,383 WARN  [org.keycloak.services] (Brute Force Protector) KC-SERVICES0053: login failure for user 930e369e-4d57-43ea-9f54-7464d050905e from ip 172.16.200.67",
+        "sample_stacktrace": ""
+    }
+
+    incident = classifier.classify_incident(raw_incident)
+
+    assert incident.gravidade == 3
+    assert incident.gravidade_label == "Crítica"
+    assert incident.setor == "Autenticação / Segurança"
+    assert incident.tipo_falha == "Permission / Auth"
+    assert any("Brute Force Protector" in ev for ev in incident.classification_evidence)
+

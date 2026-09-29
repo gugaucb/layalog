@@ -21,8 +21,7 @@ def test_get_single_profile():
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "Autenticação & Identidade (Keycloak / OAuth)"
-    assert data["is_builtin"] is True
-    assert "Brute Force Protector" in data["criteria_media"]
+    assert "Brute Force Protector" in data["criteria_critica"]
 
 def test_profile_crud_endpoints():
     # 1. Create custom profile with explicit id

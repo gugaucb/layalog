@@ -29,10 +29,10 @@ def classifier(monkeypatch):
 
         # 2. Operational degradation with fallback or retry
         ("LDAP synchronization timeout - scheduled retry in 30s", 2, "Média"),
-        ("Brute Force Protector triggered for IP 192.168.1.50", 2, "Média"),
         ("Swift_TransportException: Connection timeout sending email via SMTP", 2, "Média"),
 
-        # 3. Critical failures: database outage, OOM, essential service interruption
+        # 3. Critical failures: database outage, OOM, brute force security attack, essential service interruption
+        ("Brute Force Protector triggered for IP 192.168.1.50", 3, "Crítica"),
         ("Illuminate\\Database\\QueryException: ORA-02393 exceeded limit HTTP 500 Internal Server Error", 3, "Crítica"),
         ("SQLSTATE[HY000]: Database connection refused on port 5432 HTTP 500", 3, "Crítica"),
         ("JWKS signing key unavailable: Unable to validate JWT signature", 3, "Crítica"),

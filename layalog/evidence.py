@@ -60,6 +60,12 @@ class EvidenceExtractor:
         ),
     ]
 
+    # Brute force attack / security protection patterns
+    BRUTE_FORCE_PATTERNS = [
+        (r"\bBrute\s+Force\s+Protector\b", "Brute Force Protector triggered"),
+        (r"\bKC-SERVICES0053\b", "Keycloak Brute Force login failure (KC-SERVICES0053)"),
+    ]
+
     # JWT / Token expired patterns
     JWT_EXPIRED_PATTERNS = [
         (r"\bJWT\s+expired\b", "JWT expired"),
@@ -85,6 +91,7 @@ class EvidenceExtractor:
         is_http_failure = False
         is_out_of_memory = False
         is_jwt_expired = False
+        is_brute_force = False
 
         # Check DB
         for pattern, _ in self.DB_PATTERNS:
@@ -112,6 +119,14 @@ class EvidenceExtractor:
                 matched_str = match.group(0).strip()
                 evidences.append(f"{matched_str} detected")
 
+        # Check Brute Force
+        for pattern, _ in self.BRUTE_FORCE_PATTERNS:
+            match = re.search(pattern, combined_text, re.IGNORECASE)
+            if match:
+                is_brute_force = True
+                matched_str = match.group(0).strip()
+                evidences.append(f"{matched_str} detected")
+
         # Check JWT expired
         for pattern, _ in self.JWT_EXPIRED_PATTERNS:
             match = re.search(pattern, combined_text, re.IGNORECASE)
@@ -131,6 +146,7 @@ class EvidenceExtractor:
             "is_http_failure": is_http_failure,
             "is_out_of_memory": is_out_of_memory,
             "is_jwt_expired": is_jwt_expired,
+            "is_brute_force": is_brute_force,
             "classification_evidence": unique_evidences,
         }
 
@@ -162,6 +178,7 @@ class FinalClassificationResolver:
         is_http_fail = evidence.get("is_http_failure", False)
         is_oom = evidence.get("is_out_of_memory", False)
         is_jwt_exp = evidence.get("is_jwt_expired", False)
+        is_brute_force = evidence.get("is_brute_force", False)
 
         # Regra 1: DATABASE_ERROR + HTTP_FAILURE
         if is_db and is_http_fail:
@@ -175,8 +192,14 @@ class FinalClassificationResolver:
             gravidade = 3  # Crítica
             causa_indisponibilidade = True
 
-        # Regra 3: JWT expired (quando não há falha crítica concomitante como DB, OOM ou HTTP 5xx)
-        if is_jwt_exp and not (is_db or is_oom or is_http_fail):
+        # Regra 3: Brute Force Attack / Lockout (Segurança Ativa)
+        if is_brute_force:
+            setor = "Autenticação / Segurança"
+            tipo_falha = "Permission / Auth"
+            gravidade = 3  # Crítica
+
+        # Regra 4: JWT expired (quando não há falha crítica concomitante como DB, OOM, Brute Force ou HTTP 5xx)
+        if is_jwt_exp and not (is_db or is_oom or is_http_fail or is_brute_force):
             gravidade = 1  # Baixa
 
         return (

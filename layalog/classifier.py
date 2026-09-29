@@ -61,7 +61,7 @@ class LayaClassifier:
             },
             "gravidade": {
                 "type": "choice",
-                "instructions": "Classify the operational severity based on technical evidence, affected functionality, user impact and service availability.",
+                "instructions": "Classify the overall severity considering both service availability and active security threats based on technical evidence.",
                 "criteria": {
                     "LOW": p.criteria_baixa,
                     "MEDIUM": p.criteria_media,
