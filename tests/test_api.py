@@ -130,3 +130,15 @@ def test_analyze_stream_endpoint(client, monkeypatch):
     assert any(e["type"] == "progress" and e["percent"] == 100 for e in events)
     assert events[-1]["type"] == "complete"
     assert events[-1]["data"]["stats"]["total_errors"] == 2
+
+def test_delete_analysis_endpoint(client, monkeypatch):
+    monkeypatch.setattr("layalog.app.delete_analysis", lambda aid: True if aid == "existing-123" else False)
+
+    res_ok = client.delete("/api/analyses/existing-123")
+    assert res_ok.status_code == 200
+    assert res_ok.json() == {"status": "deleted", "id": "existing-123"}
+
+    res_404 = client.delete("/api/analyses/not-found-999")
+    assert res_404.status_code == 404
+    assert "não encontrada" in res_404.json()["detail"]
+

@@ -62,6 +62,33 @@ function initV2App() {
     });
   }
 
+  // History Manager Button
+  const manageHistoryBtn = document.getElementById("v2ManageHistoryBtn");
+  if (manageHistoryBtn) {
+    manageHistoryBtn.addEventListener("click", () => {
+      openHistoryModal();
+    });
+  }
+
+  // Delete Current Active Analysis Button
+  const deleteCurrentBtn = document.getElementById("v2DeleteCurrentAnalysisBtn");
+  if (deleteCurrentBtn) {
+    deleteCurrentBtn.addEventListener("click", () => {
+      if (!currentAnalysis) return;
+      deleteAnalysisWithConfirmation(currentAnalysis.id, currentAnalysis.filename);
+    });
+  }
+
+  // History Modal Close Buttons
+  const closeHistoryModalBtn = document.getElementById("v2CloseHistoryModalBtn");
+  if (closeHistoryModalBtn) {
+    closeHistoryModalBtn.addEventListener("click", closeHistoryModal);
+  }
+  const closeHistoryFooterBtn = document.getElementById("v2CloseHistoryFooterBtn");
+  if (closeHistoryFooterBtn) {
+    closeHistoryFooterBtn.addEventListener("click", closeHistoryModal);
+  }
+
   // Profile Selector in Topbar
   const profileSelect = document.getElementById("v2ProfileSelect");
   if (profileSelect) {
@@ -529,22 +556,246 @@ async function deleteProfileFromModal(profileId) {
 
 // ================= ANALYSES & UPLOAD =================
 
+let cachedHistory = [];
+let confirmDialogResolver = null;
+
+function showConfirmDialog(title, message, confirmText = "Excluir Definitivamente") {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("v2ConfirmModal");
+    const titleEl = document.getElementById("v2ConfirmTitle");
+    const msgEl = document.getElementById("v2ConfirmMessage");
+    const acceptBtn = document.getElementById("v2ConfirmAcceptBtn");
+    const cancelBtn = document.getElementById("v2ConfirmCancelBtn");
+
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) msgEl.textContent = message;
+    if (acceptBtn) acceptBtn.textContent = confirmText;
+
+    const cleanup = () => {
+      if (modal) modal.classList.remove("active");
+      if (acceptBtn) acceptBtn.onclick = null;
+      if (cancelBtn) cancelBtn.onclick = null;
+    };
+
+    if (acceptBtn) {
+      acceptBtn.onclick = () => {
+        cleanup();
+        resolve(true);
+      };
+    }
+
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
+        cleanup();
+        resolve(false);
+      };
+    }
+
+    if (modal) modal.classList.add("active");
+  });
+}
+
+function openHistoryModal() {
+  const modal = document.getElementById("v2HistoryModal");
+  if (modal) {
+    modal.classList.add("active");
+    renderHistoryModalList(cachedHistory);
+  }
+}
+
+function closeHistoryModal() {
+  const modal = document.getElementById("v2HistoryModal");
+  if (modal) modal.classList.remove("active");
+}
+
+function renderHistoryModalList(items) {
+  const container = document.getElementById("v2HistoryTableContainer");
+  const badge = document.getElementById("v2HistoryCountBadge");
+  if (!container) return;
+
+  if (badge) badge.textContent = `${(items || []).length} análise(s)`;
+
+  if (!items || items.length === 0) {
+    container.innerHTML = `
+      <div class="history-empty-state">
+        <div class="history-empty-icon">📁</div>
+        <div style="font-weight: 600; color: var(--text-primary); font-size: 14px;">Nenhuma análise salva no histórico</div>
+        <div style="font-size: 12.5px; max-width: 360px;">Importe um arquivo de log para analisar incidentes com a inteligência Laya.</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+
+  items.forEach(item => {
+    const card = document.createElement("div");
+    const isActive = currentAnalysis && currentAnalysis.id === item.id;
+    card.className = `history-card-item ${isActive ? 'active-item' : ''}`;
+
+    const profName = item.profile_name ? `<span class="badge badge-subtle">🎯 ${escapeHTML(item.profile_name)}</span>` : '';
+    const critBadgeClass = (item.critical_errors || 0) > 0 ? 'badge-critical' : 'badge-low';
+    const linesFmt = Number(item.total_lines).toLocaleString("pt-BR");
+    const errorsFmt = Number(item.total_errors).toLocaleString("pt-BR");
+    const critFmt = Number(item.critical_errors).toLocaleString("pt-BR");
+
+    card.innerHTML = `
+      <div class="history-card-info">
+        <div class="history-card-title-row">
+          <span class="history-card-filename">📄 ${escapeHTML(item.filename)}</span>
+          ${profName}
+          ${isActive ? '<span class="badge badge-brand">Ativo</span>' : ''}
+        </div>
+        <div class="history-card-date">🕒 ${escapeHTML(item.created_at)}</div>
+        <div class="history-card-metrics">
+          <span class="history-metric-badge">📏 ${linesFmt} linhas</span>
+          <span class="history-metric-badge">⚠️ ${errorsFmt} erros</span>
+          <span class="badge ${critBadgeClass}">🔴 ${critFmt} críticos</span>
+          <span class="history-metric-badge">⚡ ${item.unavailability_rate || 0}% indisponibilidade</span>
+        </div>
+      </div>
+      <div class="history-card-actions">
+        <button class="btn btn-secondary btn-sm btn-load-history" data-id="${item.id}" title="Carregar esta análise">
+          <span>Abrir</span>
+        </button>
+        <button class="btn btn-ghost btn-icon btn-delete-history" data-id="${item.id}" data-filename="${escapeHTML(item.filename)}" title="Excluir permanentemente" style="color: var(--critical-solid); padding: 5px 8px;">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </button>
+      </div>
+    `;
+
+    // Bind action events
+    const loadBtn = card.querySelector(".btn-load-history");
+    if (loadBtn) {
+      loadBtn.addEventListener("click", () => {
+        closeHistoryModal();
+        loadAnalysisById(item.id);
+      });
+    }
+
+    const deleteBtn = card.querySelector(".btn-delete-history");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteAnalysisWithConfirmation(item.id, item.filename);
+      });
+    }
+
+    fragment.appendChild(card);
+  });
+
+  container.appendChild(fragment);
+}
+
+async function deleteAnalysisWithConfirmation(analysisId, filename = "esta análise") {
+  const confirmed = await showConfirmDialog(
+    "Confirmar Exclusão de Análise",
+    `Tem certeza de que deseja excluir permanentemente "${filename}"? Esta ação removerá definitivamente o registro do histórico e o arquivo físico de log do servidor.`,
+    "Excluir Definitivamente"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`/api/analyses/${analysisId}`, {
+      method: "DELETE"
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Falha ao excluir" }));
+      throw new Error(err.detail || "Erro ao excluir análise.");
+    }
+
+    // If the active analysis was deleted, clear the UI
+    if (currentAnalysis && currentAnalysis.id === analysisId) {
+      clearV2Analysis();
+    }
+
+    await loadHistory();
+  } catch (err) {
+    alert(`Erro ao excluir análise: ${err.message}`);
+  }
+}
+
+function clearV2Analysis() {
+  currentAnalysis = null;
+  selectedIncident = null;
+
+  const contextFilename = document.getElementById("v2ContextFilename");
+  if (contextFilename) contextFilename.textContent = "Nenhum log importado";
+
+  const breadcrumbFile = document.getElementById("v2BreadcrumbFile");
+  if (breadcrumbFile) breadcrumbFile.textContent = "Nenhum log selecionado";
+
+  const kpiLines = document.getElementById("v2KpiLines");
+  const kpiErrors = document.getElementById("v2KpiErrors");
+  const kpiCritical = document.getElementById("v2KpiCritical");
+  const kpiUnavail = document.getElementById("v2KpiUnavail");
+
+  if (kpiLines) kpiLines.textContent = "-";
+  if (kpiErrors) kpiErrors.textContent = "-";
+  if (kpiCritical) kpiCritical.textContent = "-";
+  if (kpiUnavail) kpiUnavail.textContent = "-";
+
+  const countAll = document.getElementById("chipCountAll");
+  const countCrit = document.getElementById("chipCountCrit");
+  const countHigh = document.getElementById("chipCountHigh");
+  const countMed = document.getElementById("chipCountMed");
+  const countLow = document.getElementById("chipCountLow");
+
+  if (countAll) countAll.textContent = "0";
+  if (countCrit) countCrit.textContent = "0";
+  if (countHigh) countHigh.textContent = "0";
+  if (countMed) countMed.textContent = "0";
+  if (countLow) countLow.textContent = "0";
+
+  if (logViewerV2) {
+    logViewerV2.setAnalysis(null, 0);
+  }
+
+  renderIncidentsList([]);
+  renderEmptyDetail();
+
+  const exportBtn = document.getElementById("v2ExportBtn");
+  if (exportBtn) exportBtn.setAttribute("disabled", "true");
+
+  const deleteCurrentBtn = document.getElementById("v2DeleteCurrentAnalysisBtn");
+  if (deleteCurrentBtn) deleteCurrentBtn.style.display = "none";
+
+  const historySelect = document.getElementById("v2HistorySelect");
+  if (historySelect) historySelect.value = "";
+}
+
 async function loadHistory() {
   try {
     const res = await fetch("/api/analyses");
     if (!res.ok) return;
     const items = await res.json();
-    const select = document.getElementById("v2HistorySelect");
-    if (!select) return;
+    cachedHistory = items;
 
-    select.innerHTML = '<option value="">-- Histórico de Análises --</option>';
-    items.forEach(item => {
-      const opt = document.createElement("option");
-      opt.value = item.id;
-      const profName = item.profile_name ? ` · 🎯 ${item.profile_name}` : '';
-      opt.textContent = `${item.filename} (${item.created_at})${profName} - ${item.total_errors} erros`;
-      select.appendChild(opt);
-    });
+    const select = document.getElementById("v2HistorySelect");
+    if (select) {
+      select.innerHTML = '<option value="">-- Histórico de Análises --</option>';
+      items.forEach(item => {
+        const opt = document.createElement("option");
+        opt.value = item.id;
+        const profName = item.profile_name ? ` · 🎯 ${item.profile_name}` : '';
+        opt.textContent = `${item.filename} (${item.created_at})${profName} - ${item.total_errors} erros`;
+        select.appendChild(opt);
+      });
+
+      if (currentAnalysis) {
+        select.value = currentAnalysis.id;
+      }
+    }
+
+    const historyModal = document.getElementById("v2HistoryModal");
+    if (historyModal && historyModal.classList.contains("active")) {
+      renderHistoryModalList(items);
+    }
   } catch (err) {
     console.error("Erro ao carregar histórico:", err);
   }
@@ -786,9 +1037,12 @@ function displayV2Analysis(data) {
     renderEmptyDetail();
   }
 
-  // 7. Enable Export
+  // 7. Enable Export & Show Delete Current Analysis Button
   const exportBtn = document.getElementById("v2ExportBtn");
   if (exportBtn) exportBtn.removeAttribute("disabled");
+
+  const deleteCurrentBtn = document.getElementById("v2DeleteCurrentAnalysisBtn");
+  if (deleteCurrentBtn) deleteCurrentBtn.style.display = "inline-flex";
 }
 
 function renderIncidentsList(incidents) {

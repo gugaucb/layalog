@@ -74,3 +74,44 @@ def test_database_crud(tmp_path):
     deleted = delete_analysis("rec-1", db_path=db_file)
     assert deleted is True
     assert get_analysis("rec-1", db_path=db_file) is None
+    assert delete_analysis("rec-1", db_path=db_file) is False
+
+def test_delete_analysis_removes_physical_file(tmp_path):
+    db_file = tmp_path / "test_layalog_delete.db"
+    init_db(db_file)
+
+    log_file = tmp_path / "upload_sample.log"
+    log_file.write_text("sample log line 1\nsample log line 2\n")
+
+    stats = LogStats(
+        total_lines=2,
+        total_errors=0,
+        unique_errors=0,
+        critical_errors=0,
+        medium_errors=0,
+        low_errors=0,
+        unavailability_rate=0.0,
+        most_affected_department="Nenhum",
+        department_counts={},
+        severity_counts={"Crítica": 0, "Média": 0, "Baixa": 0},
+        failure_type_counts={}
+    )
+
+    record = AnalysisRecord(
+        id="rec-to-delete",
+        filename="upload_sample.log",
+        created_at="2026-09-28 12:00:00",
+        total_lines=2,
+        stats=stats,
+        incidents=[]
+    )
+
+    save_analysis(record, raw_text="sample log line 1\nsample log line 2\n", file_path=str(log_file), db_path=db_file)
+    assert log_file.exists()
+
+    # Perform complete deletion
+    res = delete_analysis("rec-to-delete", db_path=db_file)
+    assert res is True
+    assert not log_file.exists()
+    assert get_analysis("rec-to-delete", db_path=db_file) is None
+

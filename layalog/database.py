@@ -322,6 +322,33 @@ def delete_analysis(analysis_id: str, db_path: Path = DB_PATH) -> bool:
     init_db(db_path)
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
+    
+    # Retrieve file_path before deleting record
+    cursor.execute("SELECT file_path FROM analyses WHERE id = ?", (analysis_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return False
+
+    file_path = row[0]
+    if file_path:
+        p = Path(file_path)
+        try:
+            if p.exists() and p.is_file():
+                p.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    # Safety cleanup for any associated files in uploads directory
+    upload_dir = Path("uploads")
+    if upload_dir.exists():
+        for matched in upload_dir.glob(f"{analysis_id}_*"):
+            try:
+                if matched.is_file():
+                    matched.unlink(missing_ok=True)
+            except Exception:
+                pass
+
     cursor.execute("DELETE FROM analyses WHERE id = ?", (analysis_id,))
     deleted = cursor.rowcount > 0
     conn.commit()
