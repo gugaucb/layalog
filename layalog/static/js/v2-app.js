@@ -136,6 +136,24 @@ function initV2App() {
       e.currentTarget.classList.add("active");
     });
   });
+
+  // Close modals on backdrop click
+  const historyModal = document.getElementById("v2HistoryModal");
+  if (historyModal) {
+    historyModal.addEventListener("click", (e) => {
+      if (e.target === historyModal) closeHistoryModal();
+    });
+  }
+
+  const confirmModal = document.getElementById("v2ConfirmModal");
+  if (confirmModal) {
+    confirmModal.addEventListener("click", (e) => {
+      if (e.target === confirmModal) {
+        confirmModal.classList.remove("active");
+        if (confirmDialogResolver) confirmDialogResolver(false);
+      }
+    });
+  }
 }
 
 function setupKeyboardShortcuts() {
@@ -146,13 +164,19 @@ function setupKeyboardShortcuts() {
       const searchInput = document.getElementById("v2SearchInput");
       if (searchInput) searchInput.focus();
     }
-    // Esc -> Close detail / blur search / close modal
+    // Esc -> Close detail / blur search / close modals
     if (e.key === "Escape") {
       const searchInput = document.getElementById("v2SearchInput");
       if (document.activeElement === searchInput) {
         searchInput.blur();
       }
       closeProfileModal();
+      closeHistoryModal();
+      const confirmModal = document.getElementById("v2ConfirmModal");
+      if (confirmModal && confirmModal.classList.contains("active")) {
+        confirmModal.classList.remove("active");
+        if (confirmDialogResolver) confirmDialogResolver(false);
+      }
     }
   });
 }

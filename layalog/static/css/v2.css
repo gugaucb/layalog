@@ -444,6 +444,10 @@ code, pre, .font-mono {
   user-select: none;
 }
 
+.btn svg, .btn span {
+  pointer-events: none;
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
