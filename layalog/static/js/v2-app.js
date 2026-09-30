@@ -624,6 +624,7 @@ function openHistoryModal() {
   if (modal) {
     modal.classList.add("active");
     renderHistoryModalList(cachedHistory);
+    loadHistory();
   }
 }
 
@@ -631,6 +632,11 @@ function closeHistoryModal() {
   const modal = document.getElementById("v2HistoryModal");
   if (modal) modal.classList.remove("active");
 }
+
+window.openHistoryModal = openHistoryModal;
+window.closeHistoryModal = closeHistoryModal;
+window.showConfirmDialog = showConfirmDialog;
+window.deleteAnalysisWithConfirmation = deleteAnalysisWithConfirmation;
 
 function renderHistoryModalList(items) {
   const container = document.getElementById("v2HistoryTableContainer");
