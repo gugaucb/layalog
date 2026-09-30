@@ -373,7 +373,152 @@ code, pre, .font-mono {
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
+}
+
+.topbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-app);
+  padding: 3px 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+}
+
+.topbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-soft);
+  margin: 0 4px;
+}
+
+.lang-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lang-select {
+  height: 32px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  outline: none;
+  transition: all var(--motion-fast);
+}
+
+.lang-select:hover {
+  border-color: var(--brand-500);
+}
+
+.tour-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--brand-600);
+  background: var(--brand-50);
+  border: 1px solid var(--brand-200);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--motion-fast);
+}
+
+.tour-btn:hover {
+  background: var(--brand-100);
+  border-color: var(--brand-300);
+  transform: translateY(-1px);
+}
+
+/* Driver.js Theme Styles */
+.driver-popover.layalog-tour-theme {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  font-family: 'Inter', sans-serif;
+  padding: 16px;
+  max-width: 340px;
+}
+
+.driver-popover.layalog-tour-theme .driver-popover-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.driver-popover.layalog-tour-theme .driver-popover-description {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.driver-popover.layalog-tour-theme .driver-popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.driver-popover.layalog-tour-theme .driver-popover-progress-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.driver-popover.layalog-tour-theme button {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all var(--motion-fast);
+}
+
+.driver-popover.layalog-tour-theme .driver-popover-next-btn {
+  background: var(--brand-600);
+  color: #FFFFFF;
+  border: 1px solid var(--brand-600);
+}
+
+.driver-popover.layalog-tour-theme .driver-popover-next-btn:hover {
+  background: var(--brand-700);
+}
+
+.driver-popover.layalog-tour-theme .driver-popover-prev-btn {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  margin-right: 6px;
+}
+
+.driver-popover.layalog-tour-theme .driver-popover-prev-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.driver-popover.layalog-tour-theme .driver-popover-close-btn {
+  color: var(--text-muted);
+}
+
+.driver-popover.layalog-tour-theme .driver-popover-close-btn:hover {
+  color: var(--text-primary);
 }
 
 /* Global Search (⌘K) */
@@ -382,6 +527,7 @@ code, pre, .font-mono {
   display: flex;
   align-items: center;
 }
+
 
 .search-input-wrapper .search-icon {
   position: absolute;

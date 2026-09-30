@@ -12,13 +12,20 @@ let uploadAbortController = null;
 let allProfiles = [];
 let selectedProfileId = "web-app-general";
 let modalSelectedProfileId = null;
+const i18nT = (key, fallback) => (window.LayaI18n ? window.LayaI18n.t(key, fallback) : (fallback || key));
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (window.LayaI18n) {
+    window.LayaI18n.applyTranslations();
+  }
   initV2App();
   loadProfiles();
   loadHistory();
   setupKeyboardShortcuts();
   setupProfileModalHandlers();
+  if (window.checkAutoTour) {
+    window.checkAutoTour();
+  }
 });
 
 function initV2App() {
@@ -144,6 +151,45 @@ function initV2App() {
       if (e.target === historyModal) closeHistoryModal();
     });
   }
+
+  // Driver.js Tour Button
+  const tourBtn = document.getElementById("v2TourBtn");
+  if (tourBtn) {
+    tourBtn.addEventListener("click", () => {
+      if (window.startLayaTour) {
+        window.startLayaTour();
+      }
+    });
+  }
+
+  // Language Selector
+  const langSelect = document.getElementById("v2LangSelect");
+  if (langSelect) {
+    if (window.LayaI18n) {
+      langSelect.value = window.LayaI18n.getCurrentLang();
+    }
+    langSelect.addEventListener("change", (e) => {
+      if (window.LayaI18n) {
+        window.LayaI18n.setLanguage(e.target.value);
+      }
+    });
+  }
+
+  // Language Change Event Dispatcher Callback
+  window.addEventListener("layalog-language-changed", () => {
+    if (currentAnalysis) {
+      if (selectedIncident) {
+        selectIncident(selectedIncident);
+      } else {
+        renderEmptyDetail();
+      }
+    } else {
+      clearV2Analysis();
+    }
+    if (allProfiles && allProfiles.length > 0) {
+      populateProfileDropdown();
+    }
+  });
 
   const confirmModal = document.getElementById("v2ConfirmModal");
   if (confirmModal) {
@@ -643,14 +689,14 @@ function renderHistoryModalList(items) {
   const badge = document.getElementById("v2HistoryCountBadge");
   if (!container) return;
 
-  if (badge) badge.textContent = `${(items || []).length} análise(s)`;
+  if (badge) badge.textContent = `${(items || []).length}`;
 
   if (!items || items.length === 0) {
     container.innerHTML = `
       <div class="history-empty-state">
         <div class="history-empty-icon">📁</div>
-        <div style="font-weight: 600; color: var(--text-primary); font-size: 14px;">Nenhuma análise salva no histórico</div>
-        <div style="font-size: 12.5px; max-width: 360px;">Importe um arquivo de log para analisar incidentes com a inteligência Laya.</div>
+        <div style="font-weight: 600; color: var(--text-primary); font-size: 14px;">${i18nT("history.emptyTitle", "No analyses saved in history")}</div>
+        <div style="font-size: 12.5px; max-width: 360px;">${i18nT("history.emptyDesc", "Import a log file to analyze incidents with Laya AI intelligence.")}</div>
       </div>
     `;
     return;
@@ -666,30 +712,30 @@ function renderHistoryModalList(items) {
 
     const profName = item.profile_name ? `<span class="badge badge-subtle">🎯 ${escapeHTML(item.profile_name)}</span>` : '';
     const critBadgeClass = (item.critical_errors || 0) > 0 ? 'badge-critical' : 'badge-low';
-    const linesFmt = Number(item.total_lines).toLocaleString("pt-BR");
-    const errorsFmt = Number(item.total_errors).toLocaleString("pt-BR");
-    const critFmt = Number(item.critical_errors).toLocaleString("pt-BR");
+    const linesFmt = Number(item.total_lines).toLocaleString();
+    const errorsFmt = Number(item.total_errors).toLocaleString();
+    const critFmt = Number(item.critical_errors).toLocaleString();
 
     card.innerHTML = `
       <div class="history-card-info">
         <div class="history-card-title-row">
           <span class="history-card-filename">📄 ${escapeHTML(item.filename)}</span>
           ${profName}
-          ${isActive ? '<span class="badge badge-brand">Ativo</span>' : ''}
+          ${isActive ? `<span class="badge badge-brand">${i18nT("history.activeBadge", "Active")}</span>` : ''}
         </div>
         <div class="history-card-date">🕒 ${escapeHTML(item.created_at)}</div>
         <div class="history-card-metrics">
-          <span class="history-metric-badge">📏 ${linesFmt} linhas</span>
-          <span class="history-metric-badge">⚠️ ${errorsFmt} erros</span>
-          <span class="badge ${critBadgeClass}">🔴 ${critFmt} críticos</span>
-          <span class="history-metric-badge">⚡ ${item.unavailability_rate || 0}% indisponibilidade</span>
+          <span class="history-metric-badge">📏 ${linesFmt} ${i18nT("history.lines", "lines")}</span>
+          <span class="history-metric-badge">⚠️ ${errorsFmt} ${i18nT("history.errors", "errors")}</span>
+          <span class="badge ${critBadgeClass}">🔴 ${critFmt} ${i18nT("history.critical", "critical")}</span>
+          <span class="history-metric-badge">⚡ ${item.unavailability_rate || 0}% ${i18nT("history.unavail", "unavailability")}</span>
         </div>
       </div>
       <div class="history-card-actions">
-        <button class="btn btn-secondary btn-sm btn-load-history" data-id="${item.id}" title="Carregar esta análise">
-          <span>Abrir</span>
+        <button class="btn btn-secondary btn-sm btn-load-history" data-id="${item.id}" title="${i18nT("history.open", "Open")}">
+          <span>${i18nT("history.open", "Open")}</span>
         </button>
-        <button class="btn btn-ghost btn-icon btn-delete-history" data-id="${item.id}" data-filename="${escapeHTML(item.filename)}" title="Excluir permanentemente" style="color: var(--critical-solid); padding: 5px 8px;">
+        <button class="btn btn-ghost btn-icon btn-delete-history" data-id="${item.id}" data-filename="${escapeHTML(item.filename)}" title="${i18nT("history.delete", "Delete")}" style="color: var(--critical-solid); padding: 5px 8px;">
           <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
           </svg>
@@ -720,11 +766,12 @@ function renderHistoryModalList(items) {
   container.appendChild(fragment);
 }
 
-async function deleteAnalysisWithConfirmation(analysisId, filename = "esta análise") {
+async function deleteAnalysisWithConfirmation(analysisId, filename = "this analysis") {
+  const msgTemplate = i18nT("confirm.deleteMsg", 'Are you sure you want to permanently delete "{filename}"? This action will completely remove the history record and physical log file from the server.');
   const confirmed = await showConfirmDialog(
-    "Confirmar Exclusão de Análise",
-    `Tem certeza de que deseja excluir permanentemente "${filename}"? Esta ação removerá definitivamente o registro do histórico e o arquivo físico de log do servidor.`,
-    "Excluir Definitivamente"
+    i18nT("confirm.deleteTitle", "Confirm Analysis Deletion"),
+    msgTemplate.replace("{filename}", filename),
+    i18nT("btn.confirmDelete", "Delete Permanently")
   );
 
   if (!confirmed) return;
@@ -735,8 +782,8 @@ async function deleteAnalysisWithConfirmation(analysisId, filename = "esta anál
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: "Falha ao excluir" }));
-      throw new Error(err.detail || "Erro ao excluir análise.");
+      const err = await res.json().catch(() => ({ detail: "Failed to delete" }));
+      throw new Error(err.detail || "Error deleting analysis.");
     }
 
     // If the active analysis was deleted, clear the UI
@@ -746,7 +793,7 @@ async function deleteAnalysisWithConfirmation(analysisId, filename = "esta anál
 
     await loadHistory();
   } catch (err) {
-    alert(`Erro ao excluir análise: ${err.message}`);
+    alert(`Error deleting analysis: ${err.message}`);
   }
 }
 
@@ -755,10 +802,10 @@ function clearV2Analysis() {
   selectedIncident = null;
 
   const contextFilename = document.getElementById("v2ContextFilename");
-  if (contextFilename) contextFilename.textContent = "Nenhum log importado";
+  if (contextFilename) contextFilename.textContent = i18nT("nav.noActiveLog", "No active log");
 
   const breadcrumbFile = document.getElementById("v2BreadcrumbFile");
-  if (breadcrumbFile) breadcrumbFile.textContent = "Nenhum log selecionado";
+  if (breadcrumbFile) breadcrumbFile.textContent = i18nT("breadcrumb.selectFile", "Select a file");
 
   const kpiLines = document.getElementById("v2KpiLines");
   const kpiErrors = document.getElementById("v2KpiErrors");
@@ -808,12 +855,12 @@ async function loadHistory() {
 
     const select = document.getElementById("v2HistorySelect");
     if (select) {
-      select.innerHTML = '<option value="">-- Histórico de Análises --</option>';
+      select.innerHTML = `<option value="">${i18nT("history.defaultOption", "-- Analysis History --")}</option>`;
       items.forEach(item => {
         const opt = document.createElement("option");
         opt.value = item.id;
         const profName = item.profile_name ? ` · 🎯 ${item.profile_name}` : '';
-        opt.textContent = `${item.filename} (${item.created_at})${profName} - ${item.total_errors} erros`;
+        opt.textContent = `${item.filename} (${item.created_at})${profName} - ${item.total_errors} ${i18nT("history.errors", "errors")}`;
         select.appendChild(opt);
       });
 
@@ -827,7 +874,7 @@ async function loadHistory() {
       renderHistoryModalList(items);
     }
   } catch (err) {
-    console.error("Erro ao carregar histórico:", err);
+    console.error("Error loading history:", err);
   }
 }
 
@@ -1114,9 +1161,9 @@ function renderIncidentsList(incidents) {
         🏢 ${escapeHTML(inc.setor)} · 🏷️ ${escapeHTML(inc.tipo_falha)}
       </div>
       <div class="incident-badges-line">
-        <span class="badge badge-subtle">🔁 ${inc.total_occurrences} ocorrência(s)</span>
-        <span class="badge badge-subtle">Linha ${inc.first_seen_line}</span>
-        ${inc.causa_indisponibilidade ? '<span class="badge badge-critical">Indisponibilidade</span>' : ''}
+        <span class="badge badge-subtle">🔁 ${inc.total_occurrences} ${i18nT("incident.occurrencesCount", "occurrence(s)")}</span>
+        <span class="badge badge-subtle">${i18nT("incident.line", "Line")} ${inc.first_seen_line}</span>
+        ${inc.causa_indisponibilidade ? `<span class="badge badge-critical">${i18nT("incident.affectsUnavail", "Unavailability")}</span>` : ''}
       </div>
     `;
 
@@ -1170,12 +1217,12 @@ function selectIncident(inc) {
   const gravBadgeClass = inc.gravidade === 3 ? "badge-critical" : (inc.gravidade === 2 ? "badge-medium" : "badge-low");
   const occurrencePills = renderOccurrencePillsHtml(inc.lines, 50);
 
-  const stacktrace = inc.sample_stacktrace || inc.sample_raw || "Nenhum stacktrace registrado para esta ocorrência.";
+  const stacktrace = inc.sample_stacktrace || inc.sample_raw || "No stacktrace recorded for this occurrence.";
 
   const profileSnap = currentAnalysis && currentAnalysis.profile_snapshot;
   const profileInfoHtml = profileSnap ? `
     <div style="font-size: 11.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--bg-app); border-radius: var(--radius-sm); border: 1px solid var(--border-soft);">
-      <span>🎯 <strong>Perfil de Calibração:</strong> ${escapeHTML(profileSnap.profile_name)}</span>
+      <span>🎯 <strong>${i18nT("incident.profileCalibration", "Calibration Profile")}:</strong> ${escapeHTML(profileSnap.profile_name)}</span>
     </div>
   ` : '';
 
@@ -1192,10 +1239,10 @@ function selectIncident(inc) {
       </div>
 
       <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-        <span class="badge badge-subtle">Setor: <strong>${escapeHTML(inc.setor)}</strong></span>
-        <span class="badge badge-subtle">Falha: <strong>${escapeHTML(inc.tipo_falha)}</strong></span>
-        <span class="badge badge-subtle">1ª vez: <strong>${inc.first_seen_time || 'N/D'}</strong></span>
-        ${inc.causa_indisponibilidade ? '<span class="badge badge-critical">Afeta Disponibilidade do Sistema</span>' : '<span class="badge badge-subtle">Sem Indisponibilidade Geral</span>'}
+        <span class="badge badge-subtle">${i18nT("incident.sector", "Sector")}: <strong>${escapeHTML(inc.setor)}</strong></span>
+        <span class="badge badge-subtle">${i18nT("incident.failure", "Failure")}: <strong>${escapeHTML(inc.tipo_falha)}</strong></span>
+        <span class="badge badge-subtle">${i18nT("incident.firstSeen", "First seen")}: <strong>${inc.first_seen_time || 'N/A'}</strong></span>
+        ${inc.causa_indisponibilidade ? `<span class="badge badge-critical">${i18nT("incident.affectsUnavail", "Affects System Availability")}</span>` : `<span class="badge badge-subtle">${i18nT("incident.noUnavail", "No General Outage")}</span>`}
       </div>
       ${profileInfoHtml}
     </div>
@@ -1208,14 +1255,14 @@ function selectIncident(inc) {
       </div>
 
       <div class="ai-field-group">
-        <span class="ai-field-label">Resumo do Diagnóstico</span>
-        <div class="ai-field-text">${escapeHTML(inc.technical_summary || 'Diagnóstico preliminar gerado.')}</div>
+        <span class="ai-field-label">${i18nT("incident.diagSummary", "Diagnostic Summary")}</span>
+        <div class="ai-field-text">${escapeHTML(inc.technical_summary || 'Preliminary diagnosis generated.')}</div>
       </div>
 
       <div class="ai-field-group">
-        <span class="ai-field-label">Ação Sugerida / Recomendação</span>
+        <span class="ai-field-label">${i18nT("incident.recommendation", "Suggested Action / Recommendation")}</span>
         <div class="ai-recommendation-box">
-          💡 ${escapeHTML(inc.recommendation || 'Verificar parâmetros de entrada e isolar o ponto de falha.')}
+          💡 ${escapeHTML(inc.recommendation || 'Verify input parameters and isolate failure origin.')}
         </div>
       </div>
     </div>
@@ -1223,12 +1270,12 @@ function selectIncident(inc) {
     <!-- Occurrences Jump Grid -->
     <div style="display: flex; flex-direction: column; gap: 6px;">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-        <span class="ai-field-label">Ocorrências (${inc.lines.length}x) — Clique para inspecionar</span>
+        <span class="ai-field-label">${i18nT("incident.occurrences", "Occurrences")} (${inc.lines.length}x) — ${i18nT("incident.occurrencesHint", "Click to inspect")}</span>
         <div style="display: flex; align-items: center; gap: 6px;">
-          <input type="number" id="directLineJump" placeholder="Ir p/ linha..." min="1" class="input-field" style="width: 84px; height: 26px; font-size: 11px; padding: 2px 6px;" onkeydown="if(event.key==='Enter'){const v=parseInt(this.value);if(v)jumpToLogLine(v);}">
-          <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 11px; height: 26px;" onclick="const v=parseInt(document.getElementById('directLineJump').value);if(v)jumpToLogLine(v);">Ir</button>
+          <input type="number" id="directLineJump" placeholder="${i18nT("incident.jumpPlaceholder", "Go to line...")}" min="1" class="input-field" style="width: 84px; height: 26px; font-size: 11px; padding: 2px 6px;" onkeydown="if(event.key==='Enter'){const v=parseInt(this.value);if(v)jumpToLogLine(v);}">
+          <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 11px; height: 26px;" onclick="const v=parseInt(document.getElementById('directLineJump').value);if(v)jumpToLogLine(v);">${i18nT("incident.jumpGo", "Go")}</button>
           <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 11px; height: 26px;" onclick="jumpToLogLine(${inc.first_seen_line})">
-            📍 1ª (${inc.first_seen_line})
+            📍 ${i18nT("incident.jumpFirst", "1st")} (${inc.first_seen_line})
           </button>
         </div>
       </div>
@@ -1240,9 +1287,9 @@ function selectIncident(inc) {
     <!-- Stacktrace Section -->
     <div style="display: flex; flex-direction: column; gap: 6px;">
       <div class="code-box-header">
-        <span class="ai-field-label">Evidência / Stacktrace</span>
+        <span class="ai-field-label">${i18nT("incident.evidenceTitle", "Evidence / Stacktrace")}</span>
         <button class="btn btn-ghost btn-sm" onclick="copyStacktrace()" id="btnCopyCode" style="font-size: 11px;">
-          Copiar
+          ${i18nT("incident.copy", "Copy")}
         </button>
       </div>
       <div class="code-box" id="stacktraceText">${escapeHTML(stacktrace)}</div>
@@ -1269,8 +1316,8 @@ function renderEmptyDetail() {
       <svg class="empty-state-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
       </svg>
-      <div class="empty-state-title">Nenhum incidente selecionado</div>
-      <div class="empty-state-desc">Selecione um erro na lista ao lado para visualizar a análise completa da Laya AI.</div>
+      <div class="empty-state-title">${i18nT("incident.waitingTitle", "Waiting for selection")}</div>
+      <div class="empty-state-desc">${i18nT("incident.waitingDesc", "Details and AI semantic analysis will appear here when you select an incident.")}</div>
     </div>
   `;
 }
@@ -1289,11 +1336,11 @@ function copyStacktrace() {
   navigator.clipboard.writeText(codeBox.textContent || "").then(() => {
     if (copyBtn) {
       const origText = copyBtn.textContent;
-      copyBtn.textContent = "Copiado!";
+      copyBtn.textContent = i18nT("incident.copied", "Copied!");
       setTimeout(() => { copyBtn.textContent = origText; }, 2000);
     }
   }).catch(err => {
-    console.error("Falha ao copiar:", err);
+    console.error("Failed to copy:", err);
   });
 }
 
