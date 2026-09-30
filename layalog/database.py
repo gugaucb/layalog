@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import json
 from typing import List, Optional, Dict, Any
@@ -6,9 +7,15 @@ from datetime import datetime
 from layalog.models import AnalysisRecord, LogStats, ErrorIncident, GravityProfile, ProfileSnapshot
 from layalog.profiles import get_builtin_profiles, get_default_profile
 
-DB_PATH = Path("layalog.db")
+DB_PATH = Path(os.getenv("LAYALOG_DB_PATH", "layalog.db"))
 
-def init_db(db_path: Path = DB_PATH):
+def get_db_path() -> Path:
+    return Path(os.getenv("LAYALOG_DB_PATH", "layalog.db"))
+
+def init_db(db_path: Optional[Path] = None):
+    if db_path is None:
+        db_path = get_db_path()
+
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
     
@@ -79,7 +86,8 @@ def init_db(db_path: Path = DB_PATH):
     conn.commit()
     conn.close()
 
-def get_profile(profile_id: str, db_path: Path = DB_PATH) -> Optional[GravityProfile]:
+def get_profile(profile_id: str, db_path: Optional[Path] = None) -> Optional[GravityProfile]:
+    db_path = db_path or get_db_path()
     init_db(db_path)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -106,7 +114,8 @@ def get_profile(profile_id: str, db_path: Path = DB_PATH) -> Optional[GravityPro
         updated_at=row["updated_at"]
     )
 
-def list_profiles(db_path: Path = DB_PATH) -> List[GravityProfile]:
+def list_profiles(db_path: Optional[Path] = None) -> List[GravityProfile]:
+    db_path = db_path or get_db_path()
     init_db(db_path)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -133,7 +142,8 @@ def list_profiles(db_path: Path = DB_PATH) -> List[GravityProfile]:
         ) for r in rows
     ]
 
-def save_profile(profile: GravityProfile, db_path: Path = DB_PATH) -> GravityProfile:
+def save_profile(profile: GravityProfile, db_path: Optional[Path] = None) -> GravityProfile:
+    db_path = db_path or get_db_path()
     init_db(db_path)
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
@@ -170,7 +180,8 @@ def save_profile(profile: GravityProfile, db_path: Path = DB_PATH) -> GravityPro
     profile.updated_at = updated_at
     return profile
 
-def delete_profile(profile_id: str, db_path: Path = DB_PATH) -> bool:
+def delete_profile(profile_id: str, db_path: Optional[Path] = None) -> bool:
+    db_path = db_path or get_db_path()
     init_db(db_path)
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
@@ -191,7 +202,8 @@ def delete_profile(profile_id: str, db_path: Path = DB_PATH) -> bool:
     conn.close()
     return deleted
 
-def save_analysis(record: AnalysisRecord, raw_text: str = "", file_path: str = "", db_path: Path = DB_PATH) -> str:
+def save_analysis(record: AnalysisRecord, raw_text: str = "", file_path: str = "", db_path: Optional[Path] = None) -> str:
+    db_path = db_path or get_db_path()
     init_db(db_path)
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
@@ -217,7 +229,8 @@ def save_analysis(record: AnalysisRecord, raw_text: str = "", file_path: str = "
     conn.close()
     return record.id
 
-def list_analyses(limit: int = 50, db_path: Path = DB_PATH) -> List[Dict[str, Any]]:
+def list_analyses(limit: int = 50, db_path: Optional[Path] = None) -> List[Dict[str, Any]]:
+    db_path = db_path or get_db_path()
     init_db(db_path)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -247,7 +260,8 @@ def list_analyses(limit: int = 50, db_path: Path = DB_PATH) -> List[Dict[str, An
     conn.close()
     return results
 
-def get_analysis(analysis_id: str, include_raw: bool = False, db_path: Path = DB_PATH) -> Optional[Dict[str, Any]]:
+def get_analysis(analysis_id: str, include_raw: bool = False, db_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    db_path = db_path or get_db_path()
     init_db(db_path)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -276,7 +290,8 @@ def get_analysis(analysis_id: str, include_raw: bool = False, db_path: Path = DB
         "profile_snapshot": snapshot
     }
 
-def get_analysis_lines(analysis_id: str, start_line: int = 1, limit: int = 200, db_path: Path = DB_PATH) -> Optional[Dict[str, Any]]:
+def get_analysis_lines(analysis_id: str, start_line: int = 1, limit: int = 200, db_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    db_path = db_path or get_db_path()
     init_db(db_path)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -318,7 +333,8 @@ def get_analysis_lines(analysis_id: str, start_line: int = 1, limit: int = 200, 
         "lines": chunk
     }
 
-def delete_analysis(analysis_id: str, db_path: Path = DB_PATH) -> bool:
+def delete_analysis(analysis_id: str, db_path: Optional[Path] = None) -> bool:
+    db_path = db_path or get_db_path()
     init_db(db_path)
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
@@ -354,3 +370,4 @@ def delete_analysis(analysis_id: str, db_path: Path = DB_PATH) -> bool:
     conn.commit()
     conn.close()
     return deleted
+

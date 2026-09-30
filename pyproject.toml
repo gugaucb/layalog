@@ -20,3 +20,8 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 include = ["layalog*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
