@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Criação de `README.md` em Inglês com badges de seleção de idioma (`English` | `Português` | `简体中文`), visão geral, arquitetura e instruções
-- [ ] Criação de `README.pt-BR.md` em Português com a documentação completa
-- [ ] Criação de `README.zh-CN.md` em Chinês simplificado com a documentação completa
-- [ ] Inclusão de referências à suíte de testes E2E com Playwright, Driver.js e perfis de gravidade da IA Laya
+- [x] Criação de `README.md` em Inglês com badges de seleção de idioma (`English` | `Português` | `简体中文`), visão geral, arquitetura e instruções
+- [x] Criação de `README.pt-BR.md` em Português com a documentação completa
+- [x] Criação de `README.zh-CN.md` em Chinês simplificado com a documentação completa
+- [x] Inclusão de referências à suíte de testes E2E com Playwright, Driver.js e perfis de gravidade da IA Laya
