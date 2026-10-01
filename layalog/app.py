@@ -331,12 +331,20 @@ async def analyze_log_file_stream(
                 # Calculate progress from 25% to 90%
                 pct = int(25 + ((idx + 1) / total_groups) * 65) if total_groups > 0 else 90
                 short_msg = inc.title[:55]
+                last_sev = "critical" if inc.gravidade == 3 else ("medium" if inc.gravidade == 2 else "low")
                 yield json.dumps({
                     "type": "progress",
                     "percent": pct,
                     "message": f"Avaliando padrão único {idx + 1} de {total_groups} ({occ} ocorrências): {short_msg}...",
                     "current": idx + 1,
-                    "total": total_groups
+                    "total": total_groups,
+                    "last_severity": last_sev,
+                    "last_occurrences": occ,
+                    "counts": {
+                        "low": low_count,
+                        "medium": medium_count,
+                        "critical": critical_count
+                    }
                 }) + "\n"
 
             # Sort incidents

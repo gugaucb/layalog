@@ -878,6 +878,281 @@ async function loadHistory() {
   }
 }
 
+/* ==========================================================================
+   LayaLog V2 — Processing Modal Canvas Animation Engine
+   ========================================================================== */
+
+let animRafId = null;
+let animParticles = [];
+let animCounts = { low: 0, medium: 0, high: 0 };
+let animLastTime = 0;
+let animSpawnTimer = 0;
+
+const ANIM_PRIORITIES = [
+  { name: "low", color: "#10B981", weight: 0.50 },
+  { name: "medium", color: "#F59E0B", weight: 0.35 },
+  { name: "critical", color: "#EF4444", weight: 0.15 }
+];
+
+class ProcessingDocParticle {
+  constructor(canvasWidth, canvasHeight, explicitSeverity = null) {
+    this.w = canvasWidth;
+    this.h = canvasHeight;
+    this.cx = canvasWidth / 2;
+    this.cy = canvasHeight / 2 - 25;
+
+    if (explicitSeverity && ["low", "medium", "critical"].includes(explicitSeverity)) {
+      this.priority = explicitSeverity;
+      const match = ANIM_PRIORITIES.find(p => p.name === explicitSeverity);
+      this.color = match ? match.color : "#10B981";
+    } else {
+      // Pick priority weighted for ambient particles
+      const r = Math.random();
+      let acc = 0;
+      this.priority = "low";
+      this.color = "#10B981";
+      for (const p of ANIM_PRIORITIES) {
+        acc += p.weight;
+        if (r <= acc) {
+          this.priority = p.name;
+          this.color = p.color;
+          break;
+        }
+      }
+    }
+
+    // Target positions aligned to the 3 folder zones in the canvas base
+    const folderSpacing = Math.min(canvasWidth * 0.32, 160);
+    if (this.priority === "low") {
+      this.targetX = this.cx - folderSpacing;
+      this.targetY = canvasHeight - 12;
+    } else if (this.priority === "medium") {
+      this.targetX = this.cx;
+      this.targetY = canvasHeight - 12;
+    } else {
+      this.targetX = this.cx + folderSpacing;
+      this.targetY = canvasHeight - 12;
+    }
+
+    // Arc control point
+    this.controlX = this.cx + (Math.random() - 0.5) * (canvasWidth * 0.5);
+    this.controlY = this.cy - 50 - Math.random() * 40;
+
+    this.progress = 0;
+    this.speed = 0.012 + Math.random() * 0.008;
+    this.size = 9 + Math.random() * 4;
+    this.rotation = (Math.random() - 0.5) * 0.4;
+    this.alpha = 1;
+    this.trail = [];
+    this.x = this.cx;
+    this.y = this.cy;
+    this.counted = false;
+  }
+
+  update() {
+    this.progress += this.speed;
+
+    if (this.progress < 1) {
+      // Cubic ease out
+      const t = 1 - Math.pow(1 - this.progress, 3);
+      const mt = 1 - t;
+
+      this.x = mt * mt * this.cx + 2 * mt * t * this.controlX + t * t * this.targetX;
+      this.y = mt * mt * this.cy + 2 * mt * t * this.controlY + t * t * this.targetY;
+
+      this.trail.push({ x: this.x, y: this.y, alpha: 0.35 });
+      if (this.trail.length > 6) this.trail.shift();
+    } else {
+      this.alpha -= 0.1;
+    }
+  }
+
+  draw(ctx) {
+    // Particle trail
+    for (let i = 0; i < this.trail.length; i++) {
+      const p = this.trail[i];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.4, 0, Math.PI * 2);
+      ctx.fillStyle = this.color + "44";
+      ctx.fill();
+    }
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation * this.progress);
+    ctx.globalAlpha = Math.max(0, this.alpha);
+
+    // Document miniature
+    ctx.fillStyle = "#FFFFFF";
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(-this.size / 2, -this.size / 1.4, this.size, this.size * 1.3, 2);
+    } else {
+      ctx.rect(-this.size / 2, -this.size / 1.4, this.size, this.size * 1.3);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    // Document inner lines
+    ctx.strokeStyle = "#CBD5E1";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-this.size / 3, -this.size / 3 + i * 4);
+      ctx.lineTo(this.size / 3, -this.size / 3 + i * 4);
+      ctx.stroke();
+    }
+
+    // Badge dot
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.size / 2 - 2, -this.size / 1.4 + 3.5, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  isDead() {
+    return this.alpha <= 0;
+  }
+}
+
+function spawnStreamIncidentParticles(severity, count = 1) {
+  const canvas = document.getElementById("v2ProcessingCanvas");
+  if (!canvas) return;
+  const width = canvas.width || 530;
+  const height = canvas.height || 210;
+  const numParticles = Math.min(Math.max(1, count), 3);
+  for (let i = 0; i < numParticles; i++) {
+    const p = new ProcessingDocParticle(width, height, severity);
+    p.speed += (Math.random() - 0.5) * 0.003;
+    animParticles.push(p);
+  }
+}
+
+function drawOrb(ctx, width, height, time) {
+  const cx = width / 2;
+  const cy = height / 2 - 25;
+
+  // Outer ambient glow
+  const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, 65);
+  gradient.addColorStop(0, "rgba(37, 99, 235, 0.22)");
+  gradient.addColorStop(0.5, "rgba(37, 99, 235, 0.06)");
+  gradient.addColorStop(1, "rgba(37, 99, 235, 0)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 65, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Core Orb (Laya Brand Gradient)
+  const pulseRadius = 22 + Math.sin(time * 0.0035) * 1.5;
+  const orbGrad = ctx.createRadialGradient(cx - 6, cy - 6, 3, cx, cy, 24);
+  orbGrad.addColorStop(0, "#60A5FA");
+  orbGrad.addColorStop(0.5, "#2563EB");
+  orbGrad.addColorStop(1, "#1D4ED8");
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, pulseRadius, 0, Math.PI * 2);
+  ctx.fillStyle = orbGrad;
+  ctx.fill();
+
+  // Inner highlight reflection
+  ctx.beginPath();
+  ctx.arc(cx - 6, cy - 6, 6, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+  ctx.fill();
+
+  // LAYA text
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "bold 9.5px 'Inter', system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("LAYA", cx, cy);
+}
+
+function animateProcessing(time) {
+  const canvas = document.getElementById("v2ProcessingCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+
+  // Background subtle canvas fill
+  ctx.fillStyle = "#FAFBFD";
+  ctx.fillRect(0, 0, width, height);
+
+  drawOrb(ctx, width, height, time);
+
+  // Subtle ambient particles if no stream events are currently in flight
+  animSpawnTimer += time - animLastTime;
+  if (animSpawnTimer > 350 && animParticles.length < 2) {
+    animParticles.push(new ProcessingDocParticle(width, height));
+    animSpawnTimer = 0;
+  }
+
+  // Update and draw particles
+  for (let i = animParticles.length - 1; i >= 0; i--) {
+    const p = animParticles[i];
+    p.update();
+    p.draw(ctx);
+
+    if (p.isDead()) {
+      animParticles.splice(i, 1);
+    }
+  }
+
+  animLastTime = time;
+  animRafId = requestAnimationFrame(animateProcessing);
+}
+
+function startProcessingAnimation() {
+  stopProcessingAnimation();
+  animParticles = [];
+  animCounts = { low: 0, medium: 0, critical: 0 };
+  animLastTime = performance.now();
+  animSpawnTimer = 0;
+
+  const elLow = document.getElementById("v2AnimCountLow");
+  const elMed = document.getElementById("v2AnimCountMedium");
+  const elCrit = document.getElementById("v2AnimCountCritical");
+  if (elLow) elLow.textContent = "0";
+  if (elMed) elMed.textContent = "0";
+  if (elCrit) elCrit.textContent = "0";
+
+  const canvas = document.getElementById("v2ProcessingCanvas");
+  if (canvas) {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    } else {
+      canvas.width = 530;
+      canvas.height = 210;
+    }
+  }
+
+  animRafId = requestAnimationFrame(animateProcessing);
+}
+
+function stopProcessingAnimation() {
+  if (animRafId) {
+    cancelAnimationFrame(animRafId);
+    animRafId = null;
+  }
+  animParticles = [];
+  const canvas = document.getElementById("v2ProcessingCanvas");
+  if (canvas) {
+    const ctx = canvas.getContext("2d");
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
 function showLoadingOverlay(filename = "Arquivo de log") {
   const overlay = document.getElementById("v2LoadingModal");
   const filenameEl = document.getElementById("v2ProgressFilename");
@@ -891,9 +1166,10 @@ function showLoadingOverlay(filename = "Arquivo de log") {
   if (fillEl) fillEl.style.width = "0%";
 
   if (overlay) overlay.classList.add("active");
+  startProcessingAnimation();
 }
 
-function updateProgress(percent, message) {
+function updateProgress(percent, message, counts = null, lastSeverity = null, lastOccurrences = 1) {
   const statusEl = document.getElementById("v2ProgressStatus");
   const percentEl = document.getElementById("v2ProgressPercent");
   const fillEl = document.getElementById("v2ProgressFill");
@@ -901,11 +1177,30 @@ function updateProgress(percent, message) {
   if (fillEl) fillEl.style.width = `${percent}%`;
   if (percentEl) percentEl.textContent = `${percent}%`;
   if (statusEl && message) statusEl.textContent = message;
+
+  // Atualização em tempo real dos quantitativos reais da análise
+  if (counts) {
+    if (typeof counts.low === "number") animCounts.low = counts.low;
+    if (typeof counts.medium === "number") animCounts.medium = counts.medium;
+    if (typeof counts.critical === "number") animCounts.critical = counts.critical;
+
+    const elLow = document.getElementById("v2AnimCountLow");
+    const elMed = document.getElementById("v2AnimCountMedium");
+    const elCrit = document.getElementById("v2AnimCountCritical");
+    if (elLow) elLow.textContent = animCounts.low.toLocaleString();
+    if (elMed) elMed.textContent = animCounts.medium.toLocaleString();
+    if (elCrit) elCrit.textContent = animCounts.critical.toLocaleString();
+  }
+
+  if (lastSeverity) {
+    spawnStreamIncidentParticles(lastSeverity, lastOccurrences);
+  }
 }
 
 function hideLoadingOverlay() {
   const overlay = document.getElementById("v2LoadingModal");
   if (overlay) overlay.classList.remove("active");
+  stopProcessingAnimation();
 }
 
 function renderOccurrencePillsHtml(lines, limit = 50) {
@@ -979,7 +1274,7 @@ async function handleFileUpload(file) {
         try {
           const event = JSON.parse(line);
           if (event.type === "progress") {
-            updateProgress(event.percent, event.message);
+            updateProgress(event.percent, event.message, event.counts, event.last_severity, event.last_occurrences);
           } else if (event.type === "complete") {
             completedData = event.data;
           } else if (event.type === "error") {
