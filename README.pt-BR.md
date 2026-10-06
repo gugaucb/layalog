@@ -13,6 +13,7 @@
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white" alt="Python 3.9+" /></a>
   <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+  <a href="https://hub.docker.com/r/gugaucb/layalog"><img src="https://img.shields.io/docker/v/gugaucb/layalog?label=Docker%20Hub&logo=docker&logoColor=white&color=2496ED" alt="Docker Hub" /></a>
   <a href="https://github.com/typesafe-ai/laya"><img src="https://img.shields.io/badge/Laya%20AI-System%20One-7928CA?logo=openai&logoColor=white" alt="Laya AI" /></a>
   <a href="https://driverjs.com/"><img src="https://img.shields.io/badge/Driver.js-Guia%20Interativo-FF5722?logo=javascript&logoColor=white" alt="Driver.js" /></a>
   <a href="https://playwright.dev/"><img src="https://img.shields.io/badge/Playwright-Testes%20E2E%20Aprovados-2EAD33?logo=playwright&logoColor=white" alt="Playwright" /></a>
@@ -113,6 +114,20 @@ python run.py
 ```
 
 Abra o navegador e acesse: **[http://localhost:8100](http://localhost:8100)**
+
+### 🐳 Execução via Docker (Docker Hub)
+
+Você pode baixar e executar a imagem pré-compilada oficial diretamente do Docker Hub:
+
+```bash
+# Baixar a imagem mais recente
+docker pull gugaucb/layalog:latest
+
+# Executar o container (mapeando a porta 8100)
+docker run -d -p 8100:8100 --name layalog gugaucb/layalog:latest
+```
+
+Acesse a aplicação em: **[http://localhost:8100](http://localhost:8100)**
 
 ---
 

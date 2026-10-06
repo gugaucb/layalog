@@ -13,6 +13,7 @@
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white" alt="Python 3.9+" /></a>
   <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+  <a href="https://hub.docker.com/r/gugaucb/layalog"><img src="https://img.shields.io/docker/v/gugaucb/layalog?label=Docker%20Hub&logo=docker&logoColor=white&color=2496ED" alt="Docker Hub" /></a>
   <a href="https://github.com/typesafe-ai/laya"><img src="https://img.shields.io/badge/Laya%20AI-System%20One-7928CA?logo=openai&logoColor=white" alt="Laya AI" /></a>
   <a href="https://driverjs.com/"><img src="https://img.shields.io/badge/Driver.js-交互式指南-FF5722?logo=javascript&logoColor=white" alt="Driver.js" /></a>
   <a href="https://playwright.dev/"><img src="https://img.shields.io/badge/Playwright-E2E%E6%B5%8B%E8%AF%95%E5%85%A8%E9%80%9A%E8%BF%87-2EAD33?logo=playwright&logoColor=white" alt="Playwright" /></a>
@@ -110,6 +111,20 @@ pip install -e .
 
 ```bash
 python run.py
+```
+
+在浏览器中访问系统：**[http://localhost:8100](http://localhost:8100)**
+
+### 🐳 使用 Docker 快速运行 (Docker Hub)
+
+您可以直接从 Docker Hub 拉取并运行官方预构建镜像：
+
+```bash
+# 拉取最新官方镜像
+docker pull gugaucb/layalog:latest
+
+# 运行 Docker 容器（映射 8100 端口）
+docker run -d -p 8100:8100 --name layalog gugaucb/layalog:latest
 ```
 
 在浏览器中访问系统：**[http://localhost:8100](http://localhost:8100)**
